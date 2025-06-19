@@ -7,6 +7,7 @@ This project is a minimal React application using Vite and TypeScript. It is con
 ```bash
 npm install
 npm run dev
+npm run server
 ```
 
 ## Production build

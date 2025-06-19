@@ -23,3 +23,11 @@
 .settings-block {
   margin-bottom: 1rem;
 }
+
+.login {
+  max-width: 300px;
+  margin: 2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
