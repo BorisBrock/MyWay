@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -29,6 +29,26 @@ const locationHistory: Record<string, Location[]> = {
 export default function App() {
   const [selectedDate, setSelectedDate] = useState('2025-01-01');
   const [activeUsers, setActiveUsers] = useState<string[]>(['Alice', 'Bob']);
+  const [user, setUser] = useState<{ username: string; role: string } | null>(
+    null
+  );
+  const [adminExists, setAdminExists] = useState(true);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) {
+          setUser(d.user);
+        } else {
+          fetch('/api/admin-exists')
+            .then((r) => r.json())
+            .then((x) => setAdminExists(x.exists));
+        }
+      });
+  }, []);
 
   const toggleUser = (user: string) => {
     setActiveUsers((current) =>
@@ -36,6 +56,41 @@ export default function App() {
         ? current.filter((u) => u !== user)
         : [...current, user]
     );
+  };
+
+  const submit = () => {
+    const body = JSON.stringify({ username, password });
+    const url = adminExists ? '/api/login' : '/api/init';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user || d.success) {
+          fetch('/api/me')
+            .then((r) => r.json())
+            .then((m) => setUser(m.user));
+        } else {
+          alert(d.error || 'Failed');
+        }
+      });
+  };
+
+  const createUser = () => {
+    const body = JSON.stringify({ username, password });
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.success) alert(d.error || 'Failed');
+        setUsername('');
+        setPassword('');
+      });
   };
 
   const markers: { user: string; loc: Location }[] = [];
@@ -47,10 +102,47 @@ export default function App() {
     }
   }
 
+  if (!user) {
+    return (
+      <div className="login">
+        <h2>{adminExists ? 'Login' : 'Create Admin'}</h2>
+        <input
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button onClick={submit}>Submit</button>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
         <h2>Settings</h2>
+        {user.role === 'admin' && (
+          <div className="settings-block">
+            <h3>Create User</h3>
+            <input
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <input
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button onClick={createUser}>Create</button>
+          </div>
+        )}
         <div className="settings-block">
           <label htmlFor="date">Date</label>
           <input
